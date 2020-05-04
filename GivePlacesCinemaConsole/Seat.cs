@@ -6,7 +6,7 @@ namespace GivePlacesCinemaConsole
 {
     public class Seat
     {
-        int row;
-        int column;
+        public int row;
+        public int column;
     }
 }
