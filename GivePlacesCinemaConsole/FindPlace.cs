@@ -1,26 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace GivePlacesCinemaConsole
 {
     class FindPlace
     {
-        int rows = 5;
-        int columns = 19;
-        private string[,] allPlaces;
-        string freePlace = "x";
-        string occupiedPlace = "O";
-        decimal middleRow;
-        decimal middleColumn;
-        int totalFreePlaces;
+        private string[,] _allPlaces;
+        private readonly decimal _middleRow;
+        private readonly decimal _middleColumn;
+        private int _totalFreePlaces;
 
         public FindPlace()
         {
             FillWithEmptySpaces();
-            middleRow = Math.Ceiling((decimal)rows / 2) - 1;
-            middleColumn = Math.Ceiling((decimal)columns / 2) - 1;
-            totalFreePlaces = rows * columns;
+            _middleRow = Math.Ceiling((decimal)Attributes.Rows / 2) - 1;
+            _middleColumn = Math.Ceiling((decimal)Attributes.Columns / 2) - 1;
+            _totalFreePlaces = Attributes.Rows * Attributes.Columns;
 
             do
             {
@@ -31,13 +26,13 @@ namespace GivePlacesCinemaConsole
 
         private void FillWithEmptySpaces()
         {
-            allPlaces = new string[rows, columns];
+            _allPlaces = new string[Attributes.Rows, Attributes.Columns];
 
-            for (int i = 0; i < rows; i++)
+            for (var i = 0; i < Attributes.Rows; i++)
             {
-                for (int j = 0; j < columns; j++)
+                for (var j = 0; j < Attributes.Columns; j++)
                 {
-                    allPlaces[i, j] = freePlace;
+                    _allPlaces[i, j] = Attributes.FreePlace;
                 }
             }
         }
@@ -45,11 +40,11 @@ namespace GivePlacesCinemaConsole
         private void Draw()
         {
             Console.Clear();
-            for (int i = 0; i < rows; i++)
+            for (var i = 0; i < Attributes.Rows; i++)
             {
-                for (int j = 0; j < columns; j++)
+                for (var j = 0; j < Attributes.Columns; j++)
                 {
-                    Console.Write(allPlaces[i, j]);
+                    Console.Write(_allPlaces[i, j]);
                 }
                 Console.WriteLine();
             }
@@ -57,8 +52,7 @@ namespace GivePlacesCinemaConsole
 
         private void WaitForInput()
         {
-            int input;
-            if (totalFreePlaces == 0)
+            if (_totalFreePlaces == 0)
             {
                 Console.WriteLine("Soldout");
                 Console.ReadLine();
@@ -67,7 +61,7 @@ namespace GivePlacesCinemaConsole
 
             Console.Write("How many places do you need: ");
 
-            if (!int.TryParse(Console.ReadLine(), out input))
+            if (!int.TryParse(Console.ReadLine(), out var input))
             {
                 Console.WriteLine("---Invalid Input---");
                 Console.ReadLine();
@@ -80,20 +74,24 @@ namespace GivePlacesCinemaConsole
 
         private void SearchFreePlaces(int neededPlaces)
         {
-            //Primary: Search free places on the same row
+            //Zoek eerst vrije plaatsen op dezelfde rij
             var allPlacesFound = FreePlacesOnSameRow(neededPlaces);
+
             if (!allPlacesFound)
             {
                 //Algoritme om over verschillende rijen te zoeken
-                var fillPlacesOverDifferentRows = new FillPlacesOverDifferentRows(neededPlaces, rows, columns, allPlaces);
+                var fillPlacesOverDifferentRows = new FillPlacesOverDifferentRows(neededPlaces, Attributes.Rows, Attributes.Columns, _allPlaces);
+
                 var foundCluster = fillPlacesOverDifferentRows.GiveBestCluster();
+
                 if (foundCluster != null)
                 {
-                    fillFreePlacesWithList(foundCluster);
+                    FillFreePlacesWithList(foundCluster);
+                    _totalFreePlaces -= foundCluster.Count;
                 }
                 else
                 {
-                    Console.WriteLine("no cluster found");
+                    Console.WriteLine("No cluster found. Press enter.");
                     Console.ReadLine();
                 }
             }
@@ -103,7 +101,7 @@ namespace GivePlacesCinemaConsole
         {
             bool placeFound = false;
 
-            for (int i = (int)middleRow; i >= 0; i--)
+            for (int i = (int)_middleRow; i >= 0; i--)
             {
                 placeFound = SearchFreePlacesInRows(neededPlaces, i);
 
@@ -113,7 +111,7 @@ namespace GivePlacesCinemaConsole
 
             if (!placeFound)
             {
-                for (int i = (int)middleRow; i < rows; i++)
+                for (var i = (int)_middleRow; i < Attributes.Rows; i++)
                 {
                     placeFound = SearchFreePlacesInRows(neededPlaces, i);
 
@@ -127,13 +125,12 @@ namespace GivePlacesCinemaConsole
 
         private bool SearchFreePlacesInRows(int neededPlaces, int row)
         {
-            bool placeFound = false;
-            List<decimal> devidedNeededPlaces = new List<decimal>();
+            var placeFound = false;
+            var devidedNeededPlaces = new List<decimal>();
 
             //nakijken of ze in het midden bij elkaar kunnen zitten
-            if (allPlaces[row, (int)middleColumn] == freePlace && neededPlaces > (columns - middleColumn) && neededPlaces <= columns)
+            if (_allPlaces[row, (int)_middleColumn] == Attributes.FreePlace && neededPlaces > (Attributes.Columns - _middleColumn) && neededPlaces <= Attributes.Columns)
             {
-                //Eerst ceiling zetten!
                 devidedNeededPlaces.Add(Math.Ceiling((decimal)neededPlaces / 2));
                 devidedNeededPlaces.Add(Math.Floor((decimal)neededPlaces / 2));
             }
@@ -146,9 +143,9 @@ namespace GivePlacesCinemaConsole
             {
                 placeFound = false;
 
-                for (int i = (int)middleColumn; i <= (columns - places); i++)
+                for (var i = (int)_middleColumn; i <= (Attributes.Columns - places); i++)
                 {
-                    if (allPlaces[row, i] == freePlace)
+                    if (_allPlaces[row, i] == Attributes.FreePlace)
                     {
                         Console.WriteLine("Free place found!!!");
                         fillFreePlaces(row, i, places);
@@ -159,9 +156,9 @@ namespace GivePlacesCinemaConsole
 
                 if (!placeFound)
                 {
-                    for (int i = (int)middleColumn; i >= (places - 1); i--)
+                    for (var i = (int)_middleColumn; i >= (places - 1); i--)
                     {
-                        if (allPlaces[row, i] == freePlace)
+                        if (_allPlaces[row, i] == Attributes.FreePlace)
                         {
                             Console.WriteLine("Free place found!!!");
                             fillFreePlaces(row, i - (places - 1), places);
@@ -177,17 +174,19 @@ namespace GivePlacesCinemaConsole
 
         private void fillFreePlaces(int row, int column, int places)
         {
-            for (int i = column; i < column + places; i++)
+            for (var i = column; i < column + places; i++)
             {
-                allPlaces[row, i] = occupiedPlace;
+                _allPlaces[row, i] = Attributes.OccupiedPlace;
             }
+
+            _totalFreePlaces -= places;
         }
 
-        private void fillFreePlacesWithList(List<Seat> seats)
+        private void FillFreePlacesWithList(IEnumerable<Seat> seats)
         {
             foreach (var seat in seats)
             {
-                allPlaces[seat.row, seat.column] = occupiedPlace;
+                _allPlaces[seat.row, seat.column] = Attributes.OccupiedPlace;
             }
         }
     }

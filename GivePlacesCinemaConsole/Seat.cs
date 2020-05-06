@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace GivePlacesCinemaConsole
+﻿namespace GivePlacesCinemaConsole
 {
     public class Seat
     {
-        public int row;
-        public int column;
+        public int row { get; set; }
+        public int column { get; set; }
     }
 }
