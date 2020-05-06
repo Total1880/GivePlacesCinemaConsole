@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace GivePlacesCinemaConsole
 {
@@ -8,14 +9,12 @@ namespace GivePlacesCinemaConsole
         private string[,] _allPlaces;
         private readonly decimal _middleRow;
         private readonly decimal _middleColumn;
-        private int _totalFreePlaces;
 
         public FindPlace()
         {
             FillWithEmptySpaces();
             _middleRow = Math.Ceiling((decimal)Attributes.Rows / 2) - 1;
             _middleColumn = Math.Ceiling((decimal)Attributes.Columns / 2) - 1;
-            _totalFreePlaces = Attributes.Rows * Attributes.Columns;
 
             do
             {
@@ -52,7 +51,7 @@ namespace GivePlacesCinemaConsole
 
         private void WaitForInput()
         {
-            if (_totalFreePlaces == 0)
+            if (CheckIfSoldOut())
             {
                 Console.WriteLine("Soldout");
                 Console.ReadLine();
@@ -87,7 +86,6 @@ namespace GivePlacesCinemaConsole
                 if (foundCluster != null)
                 {
                     FillFreePlacesWithList(foundCluster);
-                    _totalFreePlaces -= foundCluster.Count;
                 }
                 else
                 {
@@ -99,9 +97,9 @@ namespace GivePlacesCinemaConsole
 
         private bool FreePlacesOnSameRow(int neededPlaces)
         {
-            bool placeFound = false;
+            var placeFound = false;
 
-            for (int i = (int)_middleRow; i >= 0; i--)
+            for (var i = (int)_middleRow; i >= 0; i--)
             {
                 placeFound = SearchFreePlacesInRows(neededPlaces, i);
 
@@ -148,7 +146,7 @@ namespace GivePlacesCinemaConsole
                     if (_allPlaces[row, i] == Attributes.FreePlace)
                     {
                         Console.WriteLine("Free place found!!!");
-                        fillFreePlaces(row, i, places);
+                        FillFreePlaces(row, i, places);
                         placeFound = true;
                         break;
                     }
@@ -161,7 +159,7 @@ namespace GivePlacesCinemaConsole
                         if (_allPlaces[row, i] == Attributes.FreePlace)
                         {
                             Console.WriteLine("Free place found!!!");
-                            fillFreePlaces(row, i - (places - 1), places);
+                            FillFreePlaces(row, i - (places - 1), places);
                             placeFound = true;
                             break;
                         }
@@ -172,14 +170,12 @@ namespace GivePlacesCinemaConsole
             return placeFound;
         }
 
-        private void fillFreePlaces(int row, int column, int places)
+        private void FillFreePlaces(int row, int column, int places)
         {
             for (var i = column; i < column + places; i++)
             {
                 _allPlaces[row, i] = Attributes.OccupiedPlace;
             }
-
-            _totalFreePlaces -= places;
         }
 
         private void FillFreePlacesWithList(IEnumerable<Seat> seats)
@@ -188,6 +184,22 @@ namespace GivePlacesCinemaConsole
             {
                 _allPlaces[seat.row, seat.column] = Attributes.OccupiedPlace;
             }
+        }
+
+        private bool CheckIfSoldOut()
+        {
+            for (var i = 0; i < Attributes.Rows; i++)
+            {
+                for (var j = 0; j < Attributes.Columns; j++)
+                {
+                    if (_allPlaces[i,j] == Attributes.FreePlace)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
         }
     }
 }
