@@ -6,7 +6,7 @@ namespace GivePlacesCinemaConsole
     {
         static void Main(string[] args)
         {
-            FindPlace start = new FindPlace();
+            var start = new FindPlace();
         }
     }
 }

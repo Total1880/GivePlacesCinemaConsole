@@ -17,7 +17,7 @@ namespace GivePlacesCinemaConsole
         private decimal middleColumn;
         private string freePlace = "x";
         private string occupiedPlace = "O";
-        private List<List<Seat>> clusterList = new List<List<Seat>>();
+        private Dictionary<Seat, List<Seat>> clusterList = new Dictionary<Seat, List<Seat>>();
 
 
         public FillPlacesOverDifferentRows(int neededPlaces, int rows, int columns, string[,] allPlaces)
@@ -25,12 +25,34 @@ namespace GivePlacesCinemaConsole
             _neededPlaces = neededPlaces;
             _rows = rows;
             _columns = columns;
-            _allPlaces = allPlaces;
+            _allPlaces = CopyArray(allPlaces);
             middleRow = Math.Ceiling((decimal)rows / 2) - 1;
             middleColumn = Math.Ceiling((decimal)columns / 2) - 1;
-            _bufferAllPLaces = _allPlaces;
+            _bufferAllPLaces = CopyArray(allPlaces);
 
             Go();
+        }
+
+        private string[,] CopyArray(string[,] array)
+        {
+            string[,] newArray = new string[_rows, _columns];
+
+            for (int i = 0; i < _rows ; i++)
+            {
+                for (int j = 0; j < _columns; j++)
+                {
+                    if (array[i,j] == occupiedPlace)
+                    {
+                        newArray[i, j] = occupiedPlace;
+                    }
+                    else
+                    {
+                        newArray[i, j] = freePlace;
+                    }
+                }
+            }
+
+            return newArray;
         }
 
         private void Go()
@@ -45,24 +67,59 @@ namespace GivePlacesCinemaConsole
                 return;
             }
 
-            placesRemaining--;
+            // clusterOfSeats.Add(freeSeat);
 
             var listOfFreeSeatsSameRow = ListOfFreeSeatsNextToSeat(freeSeat, placesRemaining);
 
+            foreach (var seat in listOfFreeSeatsSameRow)
+            {
+                clusterOfSeats.Add(seat);
+            }
+
             placesRemaining -= listOfFreeSeatsSameRow.Count;
 
-            FillBufferAllPlaces(listOfFreeSeatsSameRow);
-
             // Dan naar de columns kijken op de rij + 1. clusters zoeken die gescheiden zijn.
+            if (placesRemaining > 0)
+            {
+                var listFreePlacesAboveRow = FindFreePlacesAboveRow(freeSeat.row, listOfFreeSeatsSameRow, placesRemaining);
 
-            FindFreePlacesAboveRow(freeSeat.row, listOfFreeSeatsSameRow, placesRemaining);
+                foreach (var seat in listFreePlacesAboveRow)
+                {
+                    clusterOfSeats.Add(seat);
+                }
+
+                placesRemaining -= listFreePlacesAboveRow.Count;
+            }
 
             // Dan naar de columns kijken op de rij - 1. clusters zoeken die gescheiden zijn.
 
-            FindFreePlacesBellowRow(freeSeat.row,listOfFreeSeatsSameRow, placesRemaining);
+            if (placesRemaining > 0)
+            {
+                var listFreePlacesBellowRow = FindFreePlacesBellowRow(freeSeat.row, listOfFreeSeatsSameRow, placesRemaining);
+
+                foreach (var seat in listFreePlacesBellowRow)
+                {
+                    clusterOfSeats.Add(seat);
+                }
+
+                placesRemaining -= listFreePlacesBellowRow.Count;
+            }
+
             // Dan naar de columns kijken op de rij + 2. clusters zoeken die gescheiden zijn.
             // enz
             // volledige cluster gevonden? opslagen en naar volgende
+            if (placesRemaining == 0)
+            {
+                clusterList.Add(freeSeat, clusterOfSeats);
+            }
+
+            FillBufferAllPlaces(clusterOfSeats);
+
+            if (CountEmptyPlaces(_bufferAllPLaces) >= _neededPlaces)
+            {
+                Go();
+            }
+
             // Slechte clusters ook opslagen zodat er niet onnodig gezocht wordt. 
             // Indien vrije seat in 1 van deze clusters? naar volgende. Altijd deze check doen, ook als je clusters aan het samenstellen bent.
             // Op het einde beste cluster kiezen => zo weinig mogelijk rijen, zo veel mogelijk in het midden (gemiddeld nummer collumns moet zo dicht mogelijk bij middelste liggen. Zelfde bij rij)
@@ -73,11 +130,12 @@ namespace GivePlacesCinemaConsole
         {
             var freeSeat = new Seat();
 
-            for (int i = (int)middleRow; i >= 0; i--)
+
+            for (int i = (int)middleRow; i < _rows; i++)
             {
                 for (int j = (int)middleColumn; j <= (_columns - 1); j++)
                 {
-                    if (_allPlaces[i, j] == freePlace)
+                    if (_bufferAllPLaces[i, j] == freePlace)
                     {
                         freeSeat.row = i;
                         freeSeat.column = j;
@@ -85,9 +143,9 @@ namespace GivePlacesCinemaConsole
                     }
                 }
 
-                for (int j = (int)middleColumn; j >= 0; i--)
+                for (int j = (int)middleColumn; j >= 0; j--)
                 {
-                    if (_allPlaces[i, j] == freePlace)
+                    if (_bufferAllPLaces[i, j] == freePlace)
                     {
                         freeSeat.row = i;
                         freeSeat.column = j;
@@ -96,11 +154,11 @@ namespace GivePlacesCinemaConsole
                 }
             }
 
-            for (int i = (int)middleRow; i < _rows; i++)
+            for (int i = (int)middleRow; i >= 0; i--)
             {
                 for (int j = (int)middleColumn; j <= (_columns - 1); j++)
                 {
-                    if (_allPlaces[i, j] == freePlace)
+                    if (_bufferAllPLaces[i, j] == freePlace)
                     {
                         freeSeat.row = i;
                         freeSeat.column = j;
@@ -108,9 +166,9 @@ namespace GivePlacesCinemaConsole
                     }
                 }
 
-                for (int j = (int)middleColumn; j >= 0; i--)
+                for (int j = (int)middleColumn; j >= 0; j--)
                 {
-                    if (_allPlaces[i, j] == freePlace)
+                    if (_bufferAllPLaces[i, j] == freePlace)
                     {
                         freeSeat.row = i;
                         freeSeat.column = j;
@@ -122,11 +180,16 @@ namespace GivePlacesCinemaConsole
             return null;
         }
 
-        private List<Seat> ListOfFreeSeatsNextToSeat(Seat seat,int neededPlaces)
+        private List<Seat> ListOfFreeSeatsNextToSeat(Seat seat, int neededPlaces)
         {
             var listOfSeats = new List<Seat>();
 
-            for (int i = 1; i < _columns - seat.column; i++)
+            if (neededPlaces <= 0)
+            {
+                return listOfSeats;
+            }
+
+            for (int i = 0; i < _columns - seat.column; i++)
             {
                 if (_allPlaces[seat.row, seat.column + i] == occupiedPlace)
                 {
@@ -146,13 +209,13 @@ namespace GivePlacesCinemaConsole
 
             for (int i = seat.column - 1; i >= 0; i--)
             {
-                if (_allPlaces[seat.row, seat.column - i] == occupiedPlace)
+                if (_allPlaces[seat.row, i] == occupiedPlace)
                 {
                     break;
                 }
 
                 var freeSeat = new Seat();
-                freeSeat.column = seat.column + i;
+                freeSeat.column = i;
                 freeSeat.row = seat.row;
                 listOfSeats.Add(freeSeat);
 
@@ -165,9 +228,11 @@ namespace GivePlacesCinemaConsole
             return listOfSeats;
         }
 
-        private void FindFreePlacesAboveRow(int row, List<Seat> seatsOld, int placesRemaining)
+        private List<Seat> FindFreePlacesAboveRow(int row, List<Seat> seatsOld, int placesRemaining)
         {
             var seatsNew = new List<Seat>();
+
+            var listOfFreeSeats = new List<Seat>();
 
             foreach (var seat in seatsOld)
             {
@@ -176,20 +241,52 @@ namespace GivePlacesCinemaConsole
 
             foreach (var seat in seatsNew.Where(s => s.row == row))
             {
-                var seatAbove = seat;
-                seatAbove.row++;
+                var seatAbove = new Seat { column = seat.column, row = seat.row };
+                seatAbove.row--;
+                if (seatAbove.row < 0)
+                {
+                    return new List<Seat>();
+
+                }
 
                 if (_allPlaces[seatAbove.row, seatAbove.column] == freePlace)
                 {
-                    var listOfFreeSeats = ListOfFreeSeatsNextToSeat(seatAbove,placesRemaining);
-                    FindFreePlacesAboveRow(row++, seatsNew, placesRemaining - listOfFreeSeats.Count);
+                    var freeSeatsAbove = ListOfFreeSeatsNextToSeat(seatAbove, placesRemaining);
+                    foreach (var freeSeatAbove in freeSeatsAbove)
+                    {
+                        if (!listOfFreeSeats.Any(x => x.column == freeSeatAbove.column && x.row == freeSeatAbove.row))
+                        {
+                            listOfFreeSeats.Add(freeSeatAbove);
+                        }
+                    }
+
+                    if (listOfFreeSeats.Count < placesRemaining)
+                    {
+                        int newRow = row - 1;
+                        var list = FindFreePlacesAboveRow(newRow, freeSeatsAbove, placesRemaining - listOfFreeSeats.Count);
+
+                        foreach (var seat1 in list)
+                        {
+                            listOfFreeSeats.Add(seat1);
+                        }
+                    }
+                    else
+                    {
+                        return listOfFreeSeats;
+                    }
+
+                    placesRemaining = placesRemaining - listOfFreeSeats.Count;
                 }
             }
+
+            return listOfFreeSeats;
         }
 
-        private void FindFreePlacesBellowRow(int row, List<Seat> seatsOld, int placesRemaining)
+        private List<Seat> FindFreePlacesBellowRow(int row, List<Seat> seatsOld, int placesRemaining)
         {
             var seatsNew = new List<Seat>();
+
+            var listOfFreeSeats = new List<Seat>();
 
             foreach (var seat in seatsOld)
             {
@@ -198,15 +295,36 @@ namespace GivePlacesCinemaConsole
 
             foreach (var seat in seatsNew.Where(s => s.row == row))
             {
-                var seatBellow = seat;
-                seatBellow.row--;
+                var seatBellow = new Seat { column = seat.column, row = seat.row };
+                seatBellow.row++;
+
+                if (seatBellow.row >= _rows)
+                {
+                    return new List<Seat>();
+                }
 
                 if (_allPlaces[seatBellow.row, seatBellow.column] == freePlace)
                 {
-                    var listOfFreeSeats = ListOfFreeSeatsNextToSeat(seatBellow, placesRemaining);
-                    FindFreePlacesBellowRow(row--,seatsNew, placesRemaining - listOfFreeSeats.Count);
+                    var freeSeatsBellow = ListOfFreeSeatsNextToSeat(seatBellow, placesRemaining);
+                    foreach (var freeSeatBellow in freeSeatsBellow)
+                    {
+                        if (!listOfFreeSeats.Any(x => x.row == freeSeatBellow.row && x.column == freeSeatBellow.column))
+                        {
+                            listOfFreeSeats.Add(freeSeatBellow);
+                        }
+                    }
+                    if (listOfFreeSeats.Count < placesRemaining)
+                    {
+                        int newRow = row + 1;
+                        var list = FindFreePlacesBellowRow(newRow, seatsNew, placesRemaining - listOfFreeSeats.Count);
+                    }
+                    else
+                    {
+                        return listOfFreeSeats;
+                    }
                 }
             }
+            return listOfFreeSeats;
         }
 
         private void FillBufferAllPlaces(List<Seat> seats)
@@ -215,6 +333,28 @@ namespace GivePlacesCinemaConsole
             {
                 _bufferAllPLaces[seat.row, seat.column] = occupiedPlace;
             }
+        }
+
+        private int CountEmptyPlaces(string[,] allPlaces)
+        {
+            var count = 0;
+            for (int i = 0; i < _rows; i++)
+            {
+                for (int j = 0; j < _columns; j++)
+                {
+                    if (allPlaces[i, j] == freePlace)
+                    {
+                        count++;
+                    }
+                }
+            }
+
+            return count;
+        }
+
+        public List<Seat> GiveBestCluster()
+        {
+            return clusterList.Values.FirstOrDefault(x => x.Count == _neededPlaces);
         }
     }
 }

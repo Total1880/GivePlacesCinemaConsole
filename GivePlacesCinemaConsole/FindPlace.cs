@@ -86,6 +86,16 @@ namespace GivePlacesCinemaConsole
             {
                 //Algoritme om over verschillende rijen te zoeken
                 var fillPlacesOverDifferentRows = new FillPlacesOverDifferentRows(neededPlaces, rows, columns, allPlaces);
+                var foundCluster = fillPlacesOverDifferentRows.GiveBestCluster();
+                if (foundCluster != null)
+                {
+                    fillFreePlacesWithList(foundCluster);
+                }
+                else
+                {
+                    Console.WriteLine("no cluster found");
+                    Console.ReadLine();
+                }
             }
         }
 
@@ -170,6 +180,14 @@ namespace GivePlacesCinemaConsole
             for (int i = column; i < column + places; i++)
             {
                 allPlaces[row, i] = occupiedPlace;
+            }
+        }
+
+        private void fillFreePlacesWithList(List<Seat> seats)
+        {
+            foreach (var seat in seats)
+            {
+                allPlaces[seat.row, seat.column] = occupiedPlace;
             }
         }
     }
